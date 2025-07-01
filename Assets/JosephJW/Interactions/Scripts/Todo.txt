@@ -1,0 +1,1 @@
+- Change PlayerInteract.cs to a general Interact that cab be used by other characters and possibly objects.

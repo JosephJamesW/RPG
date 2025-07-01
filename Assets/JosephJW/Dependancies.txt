@@ -1,0 +1,11 @@
+Characters:
+-Cinemachine
+
+Interactions:
+- TextMeshPro
+
+Inventory:
+- TextMeshPro
+
+TextBoxWriting:
+- TextMeshPro
