@@ -1,10 +1,5 @@
-// PlayerInventoryUI.cs
-// Start of changed code block
-using GinjaGaming.FinalCharacterController;
 using System.Collections.Generic;
-using Unity.VisualScripting; // Not used, consider removing if not needed elsewhere
 using UnityEngine;
-//using static UnityEditor.Progress; // Not used, consider removing
 
 public class InventoryUI : MonoBehaviour
 {
@@ -16,13 +11,11 @@ public class InventoryUI : MonoBehaviour
     [SerializeField] GameObject itemFramePrefab;
     [SerializeField] GameObject itemSlotPrefab;
 
-    private Transform[] itemPositionTransforms; // New variable that has not been intergrated yet.
     private bool refreshTradeQueued = false;
 
     private void Awake()
     {
         tradeTransform.gameObject.SetActive(false);
-        // itemPositionTransforms = GetComponentsInChildren<Transform>(); // Original line, kept as is.
     }
 
     private void Update()
@@ -37,9 +30,8 @@ public class InventoryUI : MonoBehaviour
         if (playerManager._playerLocomotionInput.InventoryToggleOn &&
             !playerInventoryTransform.gameObject.activeSelf)
             OpenPlayerInventory();
-        else if (!playerManager._playerLocomotionInput.InventoryToggleOn &&
-            playerInventoryTransform.gameObject.activeSelf && !tradeTransform.gameObject.activeSelf &&
-            !interactingInventoryTransform.gameObject.activeSelf)
+        else if ((playerManager._playerLocomotionInput.InventoryToggleOn || playerManager._playerLocomotionInput.LockedInteractPressed) &&
+            playerInventoryTransform.gameObject.activeSelf)
             ClosePlayerInventory();
         else if (playerManager.playerInventorySystem.InventoryUpdated())
         {
@@ -49,14 +41,21 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
+    private bool AdditionalUIOpen()
+    {
+        return tradeTransform.gameObject.activeSelf || interactingInventoryTransform.gameObject.activeSelf;
+    }
+
     private void OpenPlayerInventory()
     {
+        SwitchPlayerLocked();
         UpdateInventory(playerInventoryTransform, playerManager.playerInventorySystem.inventory);
         playerInventoryTransform.gameObject.SetActive(true);
     }
 
     private void ClosePlayerInventory()
     {
+        SwitchPlayerLocked();
         playerInventoryTransform.gameObject.SetActive(false);
     }
     private void UpdateInteractingInventory()
@@ -64,8 +63,8 @@ public class InventoryUI : MonoBehaviour
         if (playerManager.playerInventorySystem.CurrentInteractingInventory != null &&
             !interactingInventoryTransform.gameObject.activeSelf)
             OpenInteractingInventory();
-        else if (interactingInventoryTransform.gameObject.activeSelf &&
-            playerManager._playerLocomotionInput.LockedInteractPressed)
+        else if (playerManager.playerInventorySystem.CurrentInteractingInventory == null &&
+            interactingInventoryTransform.gameObject.activeSelf && !playerInventoryTransform.gameObject.activeSelf)
             CloseInteractingInventory();
         else if (playerManager.playerInventorySystem.CurrentInteractingInventory != null &&
             playerManager.playerInventorySystem.CurrentInteractingInventory.InventoryUpdated())
@@ -75,7 +74,6 @@ public class InventoryUI : MonoBehaviour
     private void OpenInteractingInventory()
     {
         interactingInventoryTransform.gameObject.SetActive(true);
-        SwitchPlayerLocked();
         UpdateInventory(interactingInventoryTransform, playerManager.playerInventorySystem.CurrentInteractingInventory.inventory);
         OpenPlayerInventory();
     }
@@ -84,7 +82,6 @@ public class InventoryUI : MonoBehaviour
     {
         playerManager.playerInventorySystem.CurrentInteractingInventory = null;
         interactingInventoryTransform.gameObject.SetActive(false);
-        SwitchPlayerLocked();
     }
 
     private void UpdateTrade()
@@ -92,8 +89,7 @@ public class InventoryUI : MonoBehaviour
         if (playerManager.playerInventorySystem.CurrentTrader != null &&
             !tradeTransform.gameObject.activeSelf)
             OpenTrade();
-        else if (tradeTransform.gameObject.activeSelf &&
-            playerManager._playerLocomotionInput.LockedInteractPressed)
+        else if (tradeTransform.gameObject.activeSelf && !playerInventoryTransform.gameObject.activeSelf)
             CloseTrade();
         else if (refreshTradeQueued)
             RefreshTrade();
@@ -102,7 +98,6 @@ public class InventoryUI : MonoBehaviour
     private void OpenTrade()
     {
         tradeTransform.gameObject.SetActive(true);
-        SwitchPlayerLocked();
         FillTrade();
         OpenPlayerInventory();
     }
@@ -111,7 +106,6 @@ public class InventoryUI : MonoBehaviour
     {
         playerManager.playerInventorySystem.CurrentTrader = null;
         tradeTransform.gameObject.SetActive(false);
-        SwitchPlayerLocked();
         ClearInventory(tradeTransform.transform);
     }
 
@@ -162,25 +156,18 @@ public class InventoryUI : MonoBehaviour
     {
         if (inventory == null) return;
 
-        // Iterate through all InventoryItem objects in the list.
-        // An ItemFrame is created for every slot.
-        // An ItemSlot is only created if the InventoryItem object has non-null data.
         foreach (InventoryItem item in inventory)
         {
-            // Robustness: Check if 'item' itself is null, though the expectation is a list of InventoryItem objects.
             if (item == null)
             {
-                // This case implies a 'null' entry in the list, which is different from an 'InventoryItem object with null data'.
-                // Create an empty frame for such a slot too, to maintain layout integrity.
                 GameObject emptyFrameForNullEntry = Instantiate(itemFramePrefab);
                 emptyFrameForNullEntry.transform.SetParent(uITransform, false);
-                continue; // Skip trying to access 'item.data'
+                continue;
             }
 
             GameObject frameInstance = Instantiate(itemFramePrefab);
             frameInstance.transform.SetParent(uITransform, false);
 
-            // An item is considered "filled" if its 'data' field is not null.
             if (item.data != null)
             {
                 GameObject itemSlotInstance = Instantiate(itemSlotPrefab);
@@ -196,7 +183,6 @@ public class InventoryUI : MonoBehaviour
                     Debug.LogError("ItemSlot component not found on itemSlotPrefab.", itemSlotPrefab);
                 }
             }
-            // If item.data is null, an empty frame is displayed for that slot.
         }
     }
 
@@ -206,4 +192,3 @@ public class InventoryUI : MonoBehaviour
         playerManager.CursorLockSwitch();
     }
 }
-// End of changed code block

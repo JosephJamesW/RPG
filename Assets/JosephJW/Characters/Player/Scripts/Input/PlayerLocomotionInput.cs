@@ -55,6 +55,7 @@ namespace GinjaGaming.FinalCharacterController
             JumpPressed = false;
             InteractPressed = false;
             LockedInteractPressed = false;
+            InventoryToggleOn = false;
             if (inputLocked)
             {
                 MovementInput = Vector2.zero;
@@ -127,10 +128,10 @@ namespace GinjaGaming.FinalCharacterController
 
         public void OnToggleInventory(InputAction.CallbackContext context)
         {
-            if (!context.performed || inputLocked)
+            if (!context.performed)
                 return;
 
-            InventoryToggleOn = !InventoryToggleOn;
+            InventoryToggleOn = true;
         }
         #endregion
     }

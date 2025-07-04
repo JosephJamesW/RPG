@@ -12,7 +12,9 @@ public class PlayerManager : MonoBehaviour
         _playerLocomotionInput = GetComponent<PlayerLocomotionInput>();
         playerInventorySystem = GetComponent<InventorySystem>();
         _characterInteract = GetComponent<CharacterInteract>();
-        
+        Cursor.lockState = CursorLockMode.Locked;
+
+
     }
 
     private void Update()
@@ -23,7 +25,6 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
-    // Move to Movement Controller or more suitable script
     public void CursorLockSwitch()
     {
         Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.Confined : CursorLockMode.Locked;
