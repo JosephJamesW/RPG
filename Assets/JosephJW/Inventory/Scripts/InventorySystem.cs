@@ -1,12 +1,16 @@
-// InventorySystem.cs
-// Start of changed code block
 using System.Collections.Generic;
 using UnityEngine;
 
 public class InventorySystem : MonoBehaviour
 {
     private Dictionary<InventoryItemData, InventoryItem> m_itemDictionary;
-    [SerializeField] public List<InventoryItem> inventory = new List<InventoryItem>(); // Max length is defined by initial editor size
+    [SerializeField] public List<InventoryItem> inventory = new List<InventoryItem>();
+
+    [Header("Item Dropping")]
+    [SerializeField] private Transform dropDirectionRefTransform;
+    [SerializeField] private Vector3 dropItemPositionOffset;
+    [SerializeField] private float dropForce = 5f;
+
     private bool inventoryUpdated = false;
 
     public TradeManager CurrentTrader { get; set; }
@@ -17,16 +21,11 @@ public class InventorySystem : MonoBehaviour
         m_itemDictionary = new Dictionary<InventoryItemData, InventoryItem>();
         if (inventory != null)
         {
-            // Initialize based on editor-defined items, list size is now fixed.
-            // Assumes 'inventory' is pre-populated with InventoryItem objects;
-            // empty slots are InventoryItem objects with 'data == null'.
             foreach (InventoryItem item in inventory)
             {
-                // The 'item != null' check is for robustness, in case the list could somehow get actual null entries.
-                // If 'item' is guaranteed to be a valid InventoryItem object, 'item.data != null' is the key check.
                 if (item != null && item.data != null)
                 {
-                    item.AddToStack(0); // Ensures stackSize is handled, original behavior.
+                    item.AddToStack(0);
 
                     if (!m_itemDictionary.ContainsKey(item.data))
                     {
@@ -47,13 +46,12 @@ public class InventorySystem : MonoBehaviour
         inventoryUpdated = true;
         int quantityRemaining = quantity;
 
-        // First pass: Add to existing stacks of the same item type
+        // First pass: Add to existing stacks
         for (int i = 0; i < inventory.Count; i++)
         {
             if (quantityRemaining == 0) break;
 
             InventoryItem existingItem = inventory[i];
-            // Ensure existingItem and its data are not null before using them
             if (existingItem != null && existingItem.data == referenceData && existingItem.stackSize < referenceData.maxStackSize)
             {
                 int canAddToStack = referenceData.maxStackSize - existingItem.stackSize;
@@ -71,16 +69,14 @@ public class InventorySystem : MonoBehaviour
 
         if (quantityRemaining == 0) return;
 
-        // Second pass: Place in empty slots (InventoryItem object exists, but its 'data' is null)
+        // Second pass: Place in empty slots
         for (int i = 0; i < inventory.Count; i++)
         {
             if (quantityRemaining == 0) break;
 
-            // An empty slot is an InventoryItem object with null data.
             if (inventory[i] != null && inventory[i].data == null)
             {
                 int amountForNewStack = Mathf.Min(quantityRemaining, referenceData.maxStackSize);
-                // Replace the "empty" InventoryItem object with a new, "filled" one.
                 InventoryItem newItem = new InventoryItem(referenceData, amountForNewStack);
                 inventory[i] = newItem;
 
@@ -108,7 +104,6 @@ public class InventorySystem : MonoBehaviour
             if (quantityToRemove == 0) break;
 
             InventoryItem currentItem = inventory[i];
-            // Ensure currentItem and its data are not null before processing
             if (currentItem != null && currentItem.data == referenceData)
             {
                 int amountCanBeTakenFromStack = currentItem.stackSize;
@@ -119,17 +114,14 @@ public class InventorySystem : MonoBehaviour
 
                 if (currentItem.stackSize == 0)
                 {
-                    InventoryItemData dataOfEmptiedItem = currentItem.data; // Store data before nulling
-
+                    InventoryItemData dataOfEmptiedItem = currentItem.data;
                     bool wasRegistered = m_itemDictionary.TryGetValue(dataOfEmptiedItem, out InventoryItem registeredItem) && registeredItem == currentItem;
 
-                    currentItem.data = null; // Mark the InventoryItem as empty by nulling its data field.
-                                             // The InventoryItem object itself remains in the list.
+                    currentItem.data = null;
 
                     if (wasRegistered)
                     {
                         m_itemDictionary.Remove(dataOfEmptiedItem);
-                        // Try to find another stack of the same original item type to update the dictionary
                         for (int j = 0; j < inventory.Count; j++)
                         {
                             if (inventory[j] != null && inventory[j].data == dataOfEmptiedItem)
@@ -195,5 +187,53 @@ public class InventorySystem : MonoBehaviour
             return false;
         }
     }
+
+    public void DropItem(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= inventory.Count) return;
+
+        InventoryItem itemToDrop = inventory[slotIndex];
+
+        if (itemToDrop == null || itemToDrop.data == null) return;
+
+        InventoryItemData referenceData = itemToDrop.data;
+
+        if (referenceData.prefab != null)
+        {
+            GameObject droppedItemObject = Instantiate(referenceData.prefab, (transform.position + dropItemPositionOffset), transform.rotation);
+
+            if (dropDirectionRefTransform != null)
+            {
+                Rigidbody rb = droppedItemObject.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    Vector3 throwDirection = new Vector3(dropDirectionRefTransform.forward.x, 0f, dropDirectionRefTransform.forward.z).normalized;
+
+                    rb.linearVelocity = throwDirection * dropForce;
+                }
+            }
+        }
+
+        inventoryUpdated = true;
+        itemToDrop.RemoveFromStack(1);
+
+        if (itemToDrop.stackSize == 0)
+        {
+            bool wasRegistered = m_itemDictionary.TryGetValue(referenceData, out InventoryItem registeredItem) && registeredItem == itemToDrop;
+            itemToDrop.data = null;
+
+            if (wasRegistered)
+            {
+                m_itemDictionary.Remove(referenceData);
+                for (int j = 0; j < inventory.Count; j++)
+                {
+                    if (inventory[j] != null && inventory[j].data == referenceData)
+                    {
+                        m_itemDictionary.Add(referenceData, inventory[j]);
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
-// End of changed code block

@@ -37,7 +37,7 @@ public class InventoryUI : MonoBehaviour
         {
             if (tradeTransform.gameObject.activeSelf)
                 refreshTradeQueued = true;
-            UpdateInventory(playerInventoryTransform, playerManager.playerInventorySystem.inventory);
+            UpdateInventory(playerInventoryTransform, playerManager.playerInventorySystem);
         }
     }
 
@@ -49,7 +49,7 @@ public class InventoryUI : MonoBehaviour
     private void OpenPlayerInventory()
     {
         SwitchPlayerLocked();
-        UpdateInventory(playerInventoryTransform, playerManager.playerInventorySystem.inventory);
+        UpdateInventory(playerInventoryTransform, playerManager.playerInventorySystem);
         playerInventoryTransform.gameObject.SetActive(true);
     }
 
@@ -63,18 +63,17 @@ public class InventoryUI : MonoBehaviour
         if (playerManager.playerInventorySystem.CurrentInteractingInventory != null &&
             !interactingInventoryTransform.gameObject.activeSelf)
             OpenInteractingInventory();
-        else if (playerManager.playerInventorySystem.CurrentInteractingInventory == null &&
-            interactingInventoryTransform.gameObject.activeSelf && !playerInventoryTransform.gameObject.activeSelf)
+        else if (interactingInventoryTransform.gameObject.activeSelf && !playerInventoryTransform.gameObject.activeSelf)
             CloseInteractingInventory();
         else if (playerManager.playerInventorySystem.CurrentInteractingInventory != null &&
             playerManager.playerInventorySystem.CurrentInteractingInventory.InventoryUpdated())
-            UpdateInventory(interactingInventoryTransform, playerManager.playerInventorySystem.CurrentInteractingInventory.inventory);
+            UpdateInventory(interactingInventoryTransform, playerManager.playerInventorySystem.CurrentInteractingInventory);
     }
 
     private void OpenInteractingInventory()
     {
         interactingInventoryTransform.gameObject.SetActive(true);
-        UpdateInventory(interactingInventoryTransform, playerManager.playerInventorySystem.CurrentInteractingInventory.inventory);
+        UpdateInventory(interactingInventoryTransform, playerManager.playerInventorySystem.CurrentInteractingInventory);
         OpenPlayerInventory();
     }
 
@@ -139,10 +138,10 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
-    private void UpdateInventory(Transform uITransform, List<InventoryItem> inventory)
+    private void UpdateInventory(Transform uITransform, InventorySystem inventorySystem)
     {
         ClearInventory(uITransform);
-        DrawInventorty(uITransform, inventory);
+        DrawInventorty(uITransform, inventorySystem.inventory, inventorySystem);
     }
 
     private void ClearInventory(Transform uITransform)
@@ -152,12 +151,23 @@ public class InventoryUI : MonoBehaviour
             Destroy(t.gameObject);
         }
     }
+
+    // Overloaded to support inventories that should not have clickable/droppable items (e.g., trade UI)
     public void DrawInventorty(Transform uITransform, List<InventoryItem> inventory)
+    {
+        DrawInventorty(uITransform, inventory, null);
+    }
+
+    // Main drawing method with an optional InventorySystem to enable dropping items
+    public void DrawInventorty(Transform uITransform, List<InventoryItem> inventory, InventorySystem inventorySystem = null)
     {
         if (inventory == null) return;
 
-        foreach (InventoryItem item in inventory)
+        // Use a 'for' loop to get the index of each slot
+        for (int i = 0; i < inventory.Count; i++)
         {
+            InventoryItem item = inventory[i];
+
             if (item == null)
             {
                 GameObject emptyFrameForNullEntry = Instantiate(itemFramePrefab);
@@ -167,6 +177,21 @@ public class InventoryUI : MonoBehaviour
 
             GameObject frameInstance = Instantiate(itemFramePrefab);
             frameInstance.transform.SetParent(uITransform, false);
+
+            // If an inventorySystem is provided, set up the frame for dropping items.
+            if (inventorySystem != null)
+            {
+                ItemFrame itemFrame = frameInstance.GetComponent<ItemFrame>();
+                if (itemFrame != null)
+                {
+                    itemFrame.inventorySystem = inventorySystem;
+                    itemFrame.slotIndex = i; // Pass the slot index
+                }
+                else
+                {
+                    Debug.LogWarning("ItemFrame component not found on itemFramePrefab. Attach the ItemFrame.cs script to enable dropping items.");
+                }
+            }
 
             if (item.data != null)
             {
