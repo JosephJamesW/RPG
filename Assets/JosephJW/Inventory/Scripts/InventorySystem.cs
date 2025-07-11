@@ -1,10 +1,13 @@
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class InventorySystem : MonoBehaviour
 {
     private Dictionary<InventoryItemData, InventoryItem> m_itemDictionary;
     [SerializeField] public List<InventoryItem> inventory = new List<InventoryItem>();
+    public InventoryItem holdingItem { get; private set; } = null;
+    private int returnIndex;
 
     [Header("Item Dropping")]
     [SerializeField] private Transform dropDirectionRefTransform;
@@ -38,6 +41,8 @@ public class InventorySystem : MonoBehaviour
 
     public void Add(InventoryItemData referenceData, int quantity)
     {
+        // Add logic to drop item if no space to go
+
         if (referenceData == null || quantity <= 0)
         {
             return;
@@ -185,6 +190,62 @@ public class InventorySystem : MonoBehaviour
         else
         {
             return false;
+        }
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.O) && GetComponent<PlayerManager>() != null) HoldItem(1, false);
+        if (Input.GetKeyDown(KeyCode.P) && GetComponent<PlayerManager>() != null) HoldItem(3, false);
+        //Debug.Log(holdingItem);
+    }
+
+    public void HoldItem(int slotIndex, bool single)
+    {
+        if (slotIndex < 0 || slotIndex >= inventory.Count || inventory[slotIndex] == null)
+        {
+            return;
+        }
+
+        if (!single)
+        {
+            if (holdingItem != null)
+            {
+                if (holdingItem.data != inventory[slotIndex].data || (holdingItem.data == inventory[slotIndex].data && inventory[slotIndex].stackSize + holdingItem.stackSize > holdingItem.data.maxStackSize))
+                {
+                    InventoryItem tempItem = inventory[slotIndex];
+                    inventory[slotIndex] = holdingItem;
+                    holdingItem = tempItem;
+                }
+                else
+                {
+                    holdingItem.AddToStack(inventory[slotIndex].stackSize);
+                    inventory[slotIndex] = null;
+                }
+            }
+            else
+            {
+                holdingItem = inventory[slotIndex];
+                inventory[slotIndex] = null;
+                returnIndex = slotIndex;
+            }
+            inventoryUpdated = true;
+        }
+    }
+
+    public void ReturnItem()
+    {
+        if (holdingItem == null) return;
+        if (holdingItem.data != null)
+        {
+            if (inventory[returnIndex].data == null)
+            {
+                inventory[returnIndex] = holdingItem;
+            }   
+            else
+            {
+                Add(holdingItem.data, holdingItem.stackSize);
+            }
         }
     }
 
