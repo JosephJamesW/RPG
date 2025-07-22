@@ -1,9 +1,12 @@
+using GinjaGaming.FinalCharacterController;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class InventoryUI : MonoBehaviour
 {
     [SerializeField] PlayerManager playerManager;
+    [SerializeField] PlayerLocomotionInput playerLocomotionInput;
+    [SerializeField] InventorySystem playerInventorySystem;
     [SerializeField] Transform playerInventoryTransform;
     [SerializeField] Transform interactingInventoryTransform;
     [SerializeField] Transform tradeTransform;
@@ -41,7 +44,7 @@ public class InventoryUI : MonoBehaviour
     {
         if (holdingItemSlot == null) return;
 
-        InventoryItem heldItem = playerManager.playerInventorySystem.playerHolding.holdingItem;
+        InventoryItem heldItem = playerInventorySystem.playerHolding.holdingItem;
 
         if (heldItem != null && heldItem.data != null)
         {
@@ -113,17 +116,17 @@ public class InventoryUI : MonoBehaviour
 
     private void UpdatePlayerInventory()
     {
-        if (playerManager._playerLocomotionInput.InventoryToggleOn &&
+        if (playerLocomotionInput.InventoryToggleOn &&
             !playerInventoryTransform.gameObject.activeSelf)
             OpenPlayerInventory();
-        else if ((playerManager._playerLocomotionInput.InventoryToggleOn || playerManager._playerLocomotionInput.LockedInteractPressed) &&
+        else if ((playerLocomotionInput.InventoryToggleOn || playerLocomotionInput.LockedInteractPressed) &&
             playerInventoryTransform.gameObject.activeSelf)
             ClosePlayerInventory();
-        else if (playerManager.playerInventorySystem.InventoryUpdated())
+        else if (playerInventorySystem.InventoryUpdated())
         {
             if (tradeTransform.gameObject.activeSelf)
                 refreshTradeQueued = true;
-            UpdateInventory(playerInventoryTransform, playerManager.playerInventorySystem);
+            UpdateInventory(playerInventoryTransform, playerInventorySystem);
         }
     }
 
@@ -135,7 +138,7 @@ public class InventoryUI : MonoBehaviour
     private void OpenPlayerInventory()
     {
         SwitchPlayerLocked();
-        UpdateInventory(playerInventoryTransform, playerManager.playerInventorySystem);
+        UpdateInventory(playerInventoryTransform, playerInventorySystem);
         playerInventoryTransform.gameObject.SetActive(true);
     }
 
@@ -146,32 +149,32 @@ public class InventoryUI : MonoBehaviour
     }
     private void UpdateInteractingInventory()
     {
-        if (playerManager.playerInventorySystem.CurrentInteractingInventory != null &&
+        if (playerInventorySystem.CurrentInteractingInventory != null &&
             !interactingInventoryTransform.gameObject.activeSelf)
             OpenInteractingInventory();
         else if (interactingInventoryTransform.gameObject.activeSelf && !playerInventoryTransform.gameObject.activeSelf)
             CloseInteractingInventory();
-        else if (playerManager.playerInventorySystem.CurrentInteractingInventory != null &&
-            playerManager.playerInventorySystem.CurrentInteractingInventory.InventoryUpdated())
-            UpdateInventory(interactingInventoryTransform, playerManager.playerInventorySystem.CurrentInteractingInventory);
+        else if (playerInventorySystem.CurrentInteractingInventory != null &&
+            playerInventorySystem.CurrentInteractingInventory.InventoryUpdated())
+            UpdateInventory(interactingInventoryTransform, playerInventorySystem.CurrentInteractingInventory);
     }
 
     private void OpenInteractingInventory()
     {
         interactingInventoryTransform.gameObject.SetActive(true);
-        UpdateInventory(interactingInventoryTransform, playerManager.playerInventorySystem.CurrentInteractingInventory);
+        UpdateInventory(interactingInventoryTransform, playerInventorySystem.CurrentInteractingInventory);
         OpenPlayerInventory();
     }
 
     private void CloseInteractingInventory()
     {
-        playerManager.playerInventorySystem.CurrentInteractingInventory = null;
+        playerInventorySystem.CurrentInteractingInventory = null;
         interactingInventoryTransform.gameObject.SetActive(false);
     }
 
     private void UpdateTrade()
     {
-        if (playerManager.playerInventorySystem.CurrentTrader != null &&
+        if (playerInventorySystem.CurrentTrader != null &&
             !tradeTransform.gameObject.activeSelf)
             OpenTrade();
         else if (tradeTransform.gameObject.activeSelf && !playerInventoryTransform.gameObject.activeSelf)
@@ -189,14 +192,14 @@ public class InventoryUI : MonoBehaviour
 
     public void CloseTrade()
     {
-        playerManager.playerInventorySystem.CurrentTrader = null;
+        playerInventorySystem.CurrentTrader = null;
         tradeTransform.gameObject.SetActive(false);
         ClearInventory(tradeTransform.transform);
     }
 
     public void SelectTrade(int tradeIndex)
     {
-        playerManager.playerInventorySystem.CurrentTrader.AcceptTrade(playerManager.playerInventorySystem, tradeIndex);
+        playerInventorySystem.CurrentTrader.AcceptTrade(playerInventorySystem, tradeIndex);
         refreshTradeQueued = true;
     }
 
@@ -209,7 +212,7 @@ public class InventoryUI : MonoBehaviour
 
     private void FillTrade()
     {
-        TradeManager trader = playerManager.playerInventorySystem.CurrentTrader;
+        TradeManager trader = playerInventorySystem.CurrentTrader;
         TradeOffer[] tradeOffers = trader.GetTradeOffers();
 
         foreach (TradeOffer tradeOffer in tradeOffers)
@@ -222,7 +225,7 @@ public class InventoryUI : MonoBehaviour
             tradeSlot.TradeIndex = trader.GetTradeIndex(tradeOffer);
 
             // Check if the trade is possible and set the slot's state
-            bool isTradePossible = trader.CheckTrade(playerManager.playerInventorySystem, tradeOffer);
+            bool isTradePossible = trader.CheckTrade(playerInventorySystem, tradeOffer);
             tradeSlot.SetState(isTradePossible);
 
             DrawInventorty(tradeSlot.askingTransform, tradeOffer.GetItemsAsking());
@@ -251,7 +254,7 @@ public class InventoryUI : MonoBehaviour
 
     private void SwitchPlayerLocked()
     {
-        playerManager._playerLocomotionInput.inputLocked = !playerManager._playerLocomotionInput.inputLocked;
+        playerLocomotionInput.inputLocked = !playerLocomotionInput.inputLocked;
         playerManager.CursorLockSwitch();
     }
 }

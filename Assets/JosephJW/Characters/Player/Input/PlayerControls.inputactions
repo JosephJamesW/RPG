@@ -295,12 +295,6 @@
                     "isPartOfComposite": false
                 }
             ]
-        },
-        {
-            "name": "PlayerActionsMap",
-            "id": "e757dc11-d0c6-4741-abac-4eed7052bd1f",
-            "actions": [],
-            "bindings": []
         }
     ],
     "controlSchemes": []

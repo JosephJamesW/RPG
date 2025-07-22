@@ -14,7 +14,7 @@ namespace GinjaGaming.FinalCharacterController
         private PlayerLocomotionInput _playerLocomotionInput;
         private PlayerState _playerState;
         private PlayerController _playerController;
-        private PlayerActionsInput _playerActionsInput;
+        //private PlayerActionsInput _playerActionsInput;
 
         // Locomotion
         private static int inputXHash = Animator.StringToHash("inputX");
@@ -26,10 +26,10 @@ namespace GinjaGaming.FinalCharacterController
         private static int isJumpingHash = Animator.StringToHash("isJumping");
 
         // Actions
-        private static int isAttackingHash = Animator.StringToHash("isAttacking");
-        private static int isGatheringHash = Animator.StringToHash("isGathering");
+        //private static int isAttackingHash = Animator.StringToHash("isAttacking");
+        //private static int isGatheringHash = Animator.StringToHash("isGathering");
         private static int isPlayingActionHash = Animator.StringToHash("isPlayingAction");
-        private int[] actionHashes;
+        private int[] actionHashes = new int[] { };
 
         // Camera/Rotation
         private static int isRotatingToTargetHash = Animator.StringToHash("isRotatingToTarget");
@@ -46,9 +46,9 @@ namespace GinjaGaming.FinalCharacterController
             _playerLocomotionInput = GetComponent<PlayerLocomotionInput>();
             _playerState = GetComponent<PlayerState>();
             _playerController = GetComponent<PlayerController>();
-            _playerActionsInput = GetComponent<PlayerActionsInput>();
+            //_playerActionsInput = GetComponent<PlayerActionsInput>();
 
-            actionHashes = new int[] { isGatheringHash };
+            //actionHashes = new int[] { isGatheringHash };
         }
 
         private void Update()
@@ -79,8 +79,8 @@ namespace GinjaGaming.FinalCharacterController
             _animator.SetBool(isFallingHash, isFalling);
             _animator.SetBool(isJumpingHash, isJumping);
             _animator.SetBool(isRotatingToTargetHash, _playerController.IsRotatingToTarget);
-            _animator.SetBool(isAttackingHash, _playerActionsInput.AttackPressed);
-            _animator.SetBool(isGatheringHash, _playerActionsInput.GatherPressed);
+            //_animator.SetBool(isAttackingHash, _playerActionsInput.AttackPressed);
+            //_animator.SetBool(isGatheringHash, _playerActionsInput.GatherPressed);
             _animator.SetBool(isPlayingActionHash, isPlayingAction);
 
             _animator.SetFloat(inputXHash, _currentBlendInput.x);

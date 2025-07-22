@@ -6,14 +6,14 @@ using TMPro;
 public class PlayerInteractUI : MonoBehaviour
 {
     [SerializeField] private GameObject container;
-    [SerializeField] private CharacterInteract characterInteract;
+    [SerializeField] private CharacterInteract playerInteract;
     [SerializeField] private TextMeshProUGUI interactText;
 
     private void Update()
     {
-        if (characterInteract.GetInteractableObject() != null)
+        if (playerInteract.GetInteractableObject() != null)
         {
-            Show(characterInteract.GetInteractableObject());
+            Show(playerInteract.GetInteractableObject());
         }
         else
         {
