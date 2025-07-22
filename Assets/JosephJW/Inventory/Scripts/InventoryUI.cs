@@ -10,12 +10,23 @@ public class InventoryUI : MonoBehaviour
     [SerializeField] GameObject tradeSlotPrefab;
     [SerializeField] GameObject itemFramePrefab;
     [SerializeField] GameObject itemSlotPrefab;
+    [SerializeField] private ItemSlot holdingItemSlot;
 
+    private CanvasGroup holdingItemCanvasGroup;
     private bool refreshTradeQueued = false;
 
     private void Awake()
     {
         tradeTransform.gameObject.SetActive(false);
+        if (holdingItemSlot != null)
+        {
+            holdingItemCanvasGroup = holdingItemSlot.GetComponent<CanvasGroup>();
+            if (holdingItemCanvasGroup == null)
+            {
+                holdingItemCanvasGroup = holdingItemSlot.gameObject.AddComponent<CanvasGroup>();
+            }
+            holdingItemSlot.gameObject.SetActive(false);
+        }
     }
 
     private void Update()
@@ -23,7 +34,82 @@ public class InventoryUI : MonoBehaviour
         UpdatePlayerInventory();
         UpdateInteractingInventory();
         UpdateTrade();
+        UpdateHoldingItemVisual();
     }
+
+    private void UpdateHoldingItemVisual()
+    {
+        if (holdingItemSlot == null) return;
+
+        InventoryItem heldItem = playerManager.playerInventorySystem.playerHolding.holdingItem;
+
+        if (heldItem != null && heldItem.data != null)
+        {
+            if (!holdingItemSlot.gameObject.activeSelf)
+            {
+                holdingItemSlot.gameObject.SetActive(true);
+            }
+
+            holdingItemCanvasGroup.blocksRaycasts = false;
+            holdingItemSlot.transform.position = Input.mousePosition;
+            holdingItemSlot.Set(heldItem);
+        }
+        else
+        {
+            if (holdingItemSlot.gameObject.activeSelf)
+            {
+                holdingItemSlot.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    // Main drawing method with the corrected logic
+    public void DrawInventorty(Transform uITransform, List<InventoryItem> inventory, InventorySystem inventorySystem = null)
+    {
+        if (inventory == null) return;
+
+        for (int i = 0; i < inventory.Count; i++)
+        {
+            // Always create the frame first, so every slot is clickable.
+            GameObject frameInstance = Instantiate(itemFramePrefab);
+            frameInstance.transform.SetParent(uITransform, false);
+
+            // If an inventorySystem is provided, set up the frame for interaction.
+            if (inventorySystem != null)
+            {
+                ItemFrame itemFrame = frameInstance.GetComponent<ItemFrame>();
+                if (itemFrame != null)
+                {
+                    itemFrame.inventorySystem = inventorySystem;
+                    itemFrame.slotIndex = i; // Pass the slot index
+                }
+                else
+                {
+                    Debug.LogWarning("ItemFrame component not found on itemFramePrefab. Attach the ItemFrame.cs script to the prefab to enable clicking.");
+                }
+            }
+
+            // Now, check if there's an item to draw in this frame.
+            InventoryItem item = inventory[i];
+            if (item != null && item.data != null)
+            {
+                GameObject itemSlotInstance = Instantiate(itemSlotPrefab);
+                itemSlotInstance.transform.SetParent(frameInstance.transform, false);
+
+                ItemSlot slotComponent = itemSlotInstance.GetComponent<ItemSlot>();
+                if (slotComponent != null)
+                {
+                    slotComponent.Set(item);
+                }
+                else
+                {
+                    Debug.LogError("ItemSlot component not found on itemSlotPrefab.", itemSlotPrefab);
+                }
+            }
+            // If item is null, the frame remains empty but clickable.
+        }
+    }
+
 
     private void UpdatePlayerInventory()
     {
@@ -123,7 +209,9 @@ public class InventoryUI : MonoBehaviour
 
     private void FillTrade()
     {
-        TradeOffer[] tradeOffers = playerManager.playerInventorySystem.CurrentTrader.ValidTrades(playerManager.playerInventorySystem);
+        TradeManager trader = playerManager.playerInventorySystem.CurrentTrader;
+        TradeOffer[] tradeOffers = trader.GetTradeOffers();
+
         foreach (TradeOffer tradeOffer in tradeOffers)
         {
             GameObject tradeSlotObj = Instantiate(tradeSlotPrefab);
@@ -131,7 +219,11 @@ public class InventoryUI : MonoBehaviour
 
             TradeSlot tradeSlot = tradeSlotObj.GetComponent<TradeSlot>();
             tradeSlot.inventoryUI = this;
-            tradeSlot.TradeIndex = playerManager.playerInventorySystem.CurrentTrader.GetTradeIndex(tradeOffer);
+            tradeSlot.TradeIndex = trader.GetTradeIndex(tradeOffer);
+
+            // Check if the trade is possible and set the slot's state
+            bool isTradePossible = trader.CheckTrade(playerManager.playerInventorySystem, tradeOffer);
+            tradeSlot.SetState(isTradePossible);
 
             DrawInventorty(tradeSlot.askingTransform, tradeOffer.GetItemsAsking());
             DrawInventorty(tradeSlot.givingTransform, tradeOffer.GetItemsGiving());
@@ -152,63 +244,9 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
-    // Overloaded to support inventories that should not have clickable/droppable items (e.g., trade UI)
     public void DrawInventorty(Transform uITransform, List<InventoryItem> inventory)
     {
         DrawInventorty(uITransform, inventory, null);
-    }
-
-    // Main drawing method with an optional InventorySystem to enable dropping items
-    public void DrawInventorty(Transform uITransform, List<InventoryItem> inventory, InventorySystem inventorySystem = null)
-    {
-        if (inventory == null) return;
-
-        // Use a 'for' loop to get the index of each slot
-        for (int i = 0; i < inventory.Count; i++)
-        {
-            InventoryItem item = inventory[i];
-
-            if (item == null)
-            {
-                GameObject emptyFrameForNullEntry = Instantiate(itemFramePrefab);
-                emptyFrameForNullEntry.transform.SetParent(uITransform, false);
-                continue;
-            }
-
-            GameObject frameInstance = Instantiate(itemFramePrefab);
-            frameInstance.transform.SetParent(uITransform, false);
-
-            // If an inventorySystem is provided, set up the frame for dropping items.
-            if (inventorySystem != null)
-            {
-                ItemFrame itemFrame = frameInstance.GetComponent<ItemFrame>();
-                if (itemFrame != null)
-                {
-                    itemFrame.inventorySystem = inventorySystem;
-                    itemFrame.slotIndex = i; // Pass the slot index
-                }
-                else
-                {
-                    Debug.LogWarning("ItemFrame component not found on itemFramePrefab. Attach the ItemFrame.cs script to enable dropping items.");
-                }
-            }
-
-            if (item.data != null)
-            {
-                GameObject itemSlotInstance = Instantiate(itemSlotPrefab);
-                itemSlotInstance.transform.SetParent(frameInstance.transform, false);
-
-                ItemSlot slotComponent = itemSlotInstance.GetComponent<ItemSlot>();
-                if (slotComponent != null)
-                {
-                    slotComponent.Set(item);
-                }
-                else
-                {
-                    Debug.LogError("ItemSlot component not found on itemSlotPrefab.", itemSlotPrefab);
-                }
-            }
-        }
     }
 
     private void SwitchPlayerLocked()

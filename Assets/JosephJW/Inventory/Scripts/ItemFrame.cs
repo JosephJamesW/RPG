@@ -8,10 +8,11 @@ public class ItemFrame : MonoBehaviour, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        // Pass the specific slot index to the DropItem method
+        // Pass the specific slot index to the HoldItem method on left-click.
         if (inventorySystem != null && eventData.button == PointerEventData.InputButton.Left)
         {
-            inventorySystem.DropItem(slotIndex);
+            // The 'false' argument tells HoldItem to move the entire stack.
+            inventorySystem.SelectSlot(slotIndex);
         }
     }
 }

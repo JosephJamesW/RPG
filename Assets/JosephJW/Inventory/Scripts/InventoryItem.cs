@@ -14,6 +14,16 @@ public class InventoryItem
 
     }
 
+    public void SetStackSize(int quantity)
+    {
+        if (stackSize + quantity > 0) stackSize = quantity;
+        else
+        {
+            stackSize = 0;
+            data = null;
+        }
+    }
+
     public void AddToStack(int quantity)
     {
         stackSize = Mathf.Min(stackSize + quantity, data.maxStackSize);
@@ -26,8 +36,12 @@ public class InventoryItem
 
     public void RemoveFromStack(int quantity)
     {
-        if (stackSize > quantity) stackSize -= quantity;
-        else stackSize = 0;
+        if (stackSize - quantity > 0) stackSize -= quantity;
+        else
+        {
+            stackSize = 0;
+            data = null;
+        }
     }
 
 }

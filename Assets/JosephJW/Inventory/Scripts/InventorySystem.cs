@@ -6,7 +6,9 @@ public class InventorySystem : MonoBehaviour
 {
     private Dictionary<InventoryItemData, InventoryItem> m_itemDictionary;
     [SerializeField] public List<InventoryItem> inventory = new List<InventoryItem>();
-    public InventoryItem holdingItem { get; private set; } = null;
+    //public InventoryItem holdingItem;
+    [SerializeField] public PlayerHolding playerHolding;
+
     private int returnIndex;
 
     [Header("Item Dropping")]
@@ -79,7 +81,7 @@ public class InventorySystem : MonoBehaviour
         {
             if (quantityRemaining == 0) break;
 
-            if (inventory[i] != null && inventory[i].data == null)
+            if (inventory[i] == null || (inventory[i] != null && inventory[i].data == null))
             {
                 int amountForNewStack = Mathf.Min(quantityRemaining, referenceData.maxStackSize);
                 InventoryItem newItem = new InventoryItem(referenceData, amountForNewStack);
@@ -119,19 +121,21 @@ public class InventorySystem : MonoBehaviour
 
                 if (currentItem.stackSize == 0)
                 {
-                    InventoryItemData dataOfEmptiedItem = currentItem.data;
-                    bool wasRegistered = m_itemDictionary.TryGetValue(dataOfEmptiedItem, out InventoryItem registeredItem) && registeredItem == currentItem;
+                    // We use 'referenceData' here because 'currentItem.data' has just been set to null.
+                    bool wasRegistered = m_itemDictionary.TryGetValue(referenceData, out InventoryItem registeredItem) && registeredItem == currentItem;
 
-                    currentItem.data = null;
+                    inventory[i] = null;
 
                     if (wasRegistered)
                     {
-                        m_itemDictionary.Remove(dataOfEmptiedItem);
+                        m_itemDictionary.Remove(referenceData);
+
+                        // Find the next available stack of the same item type to register in the dictionary.
                         for (int j = 0; j < inventory.Count; j++)
                         {
-                            if (inventory[j] != null && inventory[j].data == dataOfEmptiedItem)
+                            if (inventory[j] != null && inventory[j].data == referenceData)
                             {
-                                m_itemDictionary.Add(dataOfEmptiedItem, inventory[j]);
+                                m_itemDictionary.Add(referenceData, inventory[j]);
                                 break;
                             }
                         }
@@ -193,59 +197,79 @@ public class InventorySystem : MonoBehaviour
         }
     }
 
-    private void Update()
+    public void SelectSlot (int slotIndex)
     {
-        if (Input.GetKeyDown(KeyCode.O) && GetComponent<PlayerManager>() != null) HoldItem(1, false);
-        if (Input.GetKeyDown(KeyCode.P) && GetComponent<PlayerManager>() != null) HoldItem(3, false);
-        //Debug.Log(holdingItem);
-    }
+        if (slotIndex < 0 || slotIndex >= inventory.Count) return;
 
-    public void HoldItem(int slotIndex, bool single)
-    {
-        if (slotIndex < 0 || slotIndex >= inventory.Count || inventory[slotIndex] == null)
+        bool inventorySlotEmpty = inventory[slotIndex] == null || inventory[slotIndex].data == null;
+        bool playerHoldingEmpty = playerHolding.holdingItem == null || playerHolding.GetData() == null;
+
+        if (inventorySlotEmpty && playerHoldingEmpty) return;
+
+        if (Input.GetKey(KeyCode.LeftAlt))
         {
+            if (!inventorySlotEmpty && inventory[slotIndex].data.prefab != null) DropItem(slotIndex);
             return;
         }
 
-        if (!single)
+        if (!playerHoldingEmpty)
         {
-            if (holdingItem != null)
+            // Intergrate with input system.
+            int amountToMove = Input.GetKey(KeyCode.LeftControl) ? 1 : playerHolding.GetStackSize();
+
+            if (inventorySlotEmpty)
             {
-                if (holdingItem.data != inventory[slotIndex].data || (holdingItem.data == inventory[slotIndex].data && inventory[slotIndex].stackSize + holdingItem.stackSize > holdingItem.data.maxStackSize))
-                {
-                    InventoryItem tempItem = inventory[slotIndex];
-                    inventory[slotIndex] = holdingItem;
-                    holdingItem = tempItem;
-                }
-                else
-                {
-                    holdingItem.AddToStack(inventory[slotIndex].stackSize);
-                    inventory[slotIndex] = null;
-                }
+                // Create a new item in the empty slot with the correct data and quantity.
+                inventory[slotIndex] = new InventoryItem(playerHolding.GetData(), amountToMove);
+
+                // Remove the moved quantity from the item being held.
+                playerHolding.holdingItem.RemoveFromStack(amountToMove);
+            }
+            else if (playerHolding.GetData() == inventory[slotIndex].data && amountToMove + inventory[slotIndex].stackSize <= inventory[slotIndex].data.maxStackSize)
+            {
+                inventory[slotIndex].AddToStack(amountToMove);
+                playerHolding.holdingItem.RemoveFromStack(amountToMove);
             }
             else
             {
-                holdingItem = inventory[slotIndex];
-                inventory[slotIndex] = null;
+                InventoryItem tempItem = inventory[slotIndex];
+                inventory[slotIndex] = playerHolding.holdingItem;
+                playerHolding.holdingItem = tempItem;
+            }
+        }
+        else
+        {
+            // Intergrate with input system.
+            int amountToMove = Input.GetKey(KeyCode.LeftControl) ? 1 : inventory[slotIndex].stackSize;
+
+            if (inventory[slotIndex] != null || inventory[slotIndex].data != null)
+            {
+                playerHolding.SetData(inventory[slotIndex].data);
+                playerHolding.SetStackSize(amountToMove);
+                inventory[slotIndex].RemoveFromStack(amountToMove);
                 returnIndex = slotIndex;
             }
-            inventoryUpdated = true;
         }
+
+        inventoryUpdated = true;
     }
+
 
     public void ReturnItem()
     {
-        if (holdingItem == null) return;
-        if (holdingItem.data != null)
+        if (playerHolding.holdingItem == null) return;
+        if (playerHolding.GetData() != null)
         {
-            if (inventory[returnIndex].data == null)
+            if (inventory[returnIndex] == null || inventory[returnIndex].data == null)
             {
-                inventory[returnIndex] = holdingItem;
-            }   
+                inventory[returnIndex] = playerHolding.holdingItem;
+            }
             else
             {
-                Add(holdingItem.data, holdingItem.stackSize);
+                Add(playerHolding.GetData(), playerHolding.GetStackSize());
             }
+            playerHolding.SetData(null);
+            playerHolding.SetStackSize(0);
         }
     }
 
@@ -281,7 +305,7 @@ public class InventorySystem : MonoBehaviour
         if (itemToDrop.stackSize == 0)
         {
             bool wasRegistered = m_itemDictionary.TryGetValue(referenceData, out InventoryItem registeredItem) && registeredItem == itemToDrop;
-            itemToDrop.data = null;
+            inventory[slotIndex] = null;
 
             if (wasRegistered)
             {

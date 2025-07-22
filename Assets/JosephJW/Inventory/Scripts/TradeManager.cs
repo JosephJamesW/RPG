@@ -9,7 +9,7 @@ public class TradeOffer
     [SerializeField] public List<InventoryItem> itemsAsking;
     [SerializeField] public List<InventoryItem> itemsGiving;
 
-    public List<InventoryItem> GetItemsAsking() {  return itemsAsking; }
+    public List<InventoryItem> GetItemsAsking() { return itemsAsking; }
     public List<InventoryItem> GetItemsGiving() { return itemsGiving; }
 }
 
@@ -28,7 +28,12 @@ public class TradeManager : MonoBehaviour
         return Array.IndexOf(tradeOffers, tradeOffer);
     }
 
-    private bool CheckTrade(InventorySystem recieverInventorySystem, TradeOffer offer)
+    public TradeOffer[] GetTradeOffers()
+    {
+        return tradeOffers;
+    }
+
+    public bool CheckTrade(InventorySystem recieverInventorySystem, TradeOffer offer)
     {
         foreach (var item in offer.itemsGiving)
         {
@@ -47,20 +52,6 @@ public class TradeManager : MonoBehaviour
         }
 
         return true;
-    }
-
-    public TradeOffer[] ValidTrades(InventorySystem recieverInventorySystem)
-    {
-        List<TradeOffer> validTrades = new List<TradeOffer>();
-
-        foreach (TradeOffer offer in tradeOffers)
-        {
-            if (CheckTrade(recieverInventorySystem, offer))
-            {
-                validTrades.Add(offer);
-            }
-        }
-        return validTrades.ToArray();
     }
 
     public void AcceptTrade(InventorySystem recieverInventorySystem, int tradeIndex)
